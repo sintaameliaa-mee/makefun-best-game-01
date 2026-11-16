@@ -7,10 +7,13 @@ import { TOWERS } from './config.js';
 const DEMO_DEFENSE = [
   ['spark', 5, 1, 2],
   ['spark', 5, 3, 1],
-  ['spark', 11, 3, 1],
-  ['frost', 7, 6, 1],
-  ['cannon', 13, 5, 2],
-  ['nova', 19, 7, 1],
+  ['spark', 11, 3, 3],
+  ['frost', 7, 6, 2],
+  ['frost', 13, 9, 1],
+  ['cannon', 13, 5, 4],
+  ['cannon', 19, 9, 2],
+  ['nova', 19, 7, 2],
+  ['nova', 25, 7, 1],
 ];
 
 function buildDemoDefense(game) {
@@ -37,11 +40,14 @@ function stageMidGame(game, waveNumber, advanceSeconds) {
 export function setupShot(game, name) {
   // Returns the seconds of simulation to run before freezing the frame.
   if (name === 'play') {
-    return stageMidGame(game, 6, 16);
+    // Wave 12: three Dread Colossi march with wraiths, elite bulwarks,
+    // menders and splitters — the boss bar, the full defense and a busy
+    // sky of bolts.
+    return stageMidGame(game, 12, 30);
   }
   if (name === 'shop') {
     const seconds = stageMidGame(game, 6, 9);
-    const cannon = game.towers.find((t) => t.type === 'cannon');
+    const cannon = game.towers.find((t) => t.type === 'cannon' && t.level >= 4);
     if (cannon) game.selected = cannon;
     return seconds;
   }
@@ -52,6 +58,7 @@ export function setupShot(game, name) {
     game.score = 8450;
     game.kills = 187;
     game.goldEarned = 1240;
+    game.flawlessWaves = 8;
     game.lives = 14;
     game.wave = 12;
     game.waveActive = false;

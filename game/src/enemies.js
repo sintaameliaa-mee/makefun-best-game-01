@@ -1,32 +1,45 @@
 // Enemies march the road from the west gate to the beacon. Each one tracks
 // its distance along the path, so towers can always aim at the furthest
 // along (the classic "first" targeting) and the game can measure progress.
-import { ENEMIES, enemyHpFor, pathWaypoints } from './config.js';
+// Elites are tougher, richer variants; splitters burst into swarmlets on
+// death, and menders heal nearby allies.
+import {
+  ENEMIES, enemyHpFor, pathWaypoints,
+  ELITE_HP_MULTIPLIER, ELITE_REWARD_MULTIPLIER,
+} from './config.js';
 
 let nextId = 1;
 
 export class Enemy {
-  constructor(type, wave) {
+  // options: { elite, spawnAt: { x, y, waypointIndex, distance } } — the
+  // spawnAt form places a split child mid-road instead of at the west gate.
+  constructor(type, wave, options = {}) {
     const def = ENEMIES[type];
     const waypoints = pathWaypoints();
     this.id = nextId;
     nextId += 1;
     this.type = type;
     this.name = def.name;
-    this.x = waypoints[0].x;
-    this.y = waypoints[0].y;
-    this.waypointIndex = 1;
+    this.elite = Boolean(options.elite);
+    const at = options.spawnAt;
+    this.x = at ? at.x : waypoints[0].x;
+    this.y = at ? at.y : waypoints[0].y;
+    this.waypointIndex = at ? at.waypointIndex : 1;
+    this.distance = at ? at.distance : 0;
     this.maxHp = enemyHpFor(type, wave);
+    if (this.elite) this.maxHp = Math.round(this.maxHp * ELITE_HP_MULTIPLIER);
     this.hp = this.maxHp;
     this.maxShield = def.shield || 0;
     this.shield = this.maxShield;
-    this.speed = def.speed;
-    this.reward = def.reward;
+    this.speed = def.speed * (this.elite ? 0.95 : 1);
+    this.reward = def.reward * (this.elite ? ELITE_REWARD_MULTIPLIER : 1);
     this.lives = def.lives;
-    this.radius = def.radius;
+    this.radius = def.radius + (this.elite ? 2 : 0);
     this.color = def.color;
     this.dark = def.dark;
-    this.distance = 0;
+    this.splitsInto = def.splitsInto || null;
+    this.healRadius = def.healRadius || 0;
+    this.healRate = def.healRate || 0;
     this.slowFactor = 0;
     this.slowUntil = 0;
     this.flash = 0;
@@ -37,6 +50,19 @@ export class Enemy {
 
   get slowed() {
     return this.slowFactor > 0;
+  }
+
+  get isMender() {
+    return this.healRate > 0;
+  }
+
+  // Mend an ally: never above full health, never the dead. Returns the
+  // amount actually restored (0 when the target is already full).
+  heal(amount) {
+    if (this.dead || this.escaped || this.hp >= this.maxHp) return 0;
+    const restored = Math.min(amount, this.maxHp - this.hp);
+    this.hp += restored;
+    return restored;
   }
 
   applySlow(factor, duration, now) {

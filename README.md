@@ -14,11 +14,20 @@ bounty links to once entries close.
   waves to win; lose all 20 lives and the light fades.
 - **Build:** click a tower card (or press 1–4), then click a free field
   cell. Four towers — Spark Spire (rapid), Frost Obelisk (slow), Cannon
-  Bastion (heavy), Nova Mortar (splash) — each with 3 upgrade levels.
-- **Economy:** kills pay gold, clearing a wave pays a bonus, towers sell
-  back at 70%.
+  Bastion (heavy), Nova Mortar (splash) — each with 4 upgrade levels.
+- **Foes:** eight enemy types march the road — Drifters, Swifts,
+  Swarmlets, Bulwarks, shielded Wraiths, Dread Colossi, Splitters (burst
+  into swarmlets on death) and Menders (heal nearby allies). Late waves
+  add elite variants with more health and double gold.
+- **Beacon Surge:** press Q (or the SURGE button) to blast every enemy on
+  the field for 45 damage and slow them briefly. Free to use, 30-second
+  cooldown.
+- **Economy:** kills pay gold, clearing a wave pays 20 + 5×wave gold, and
+  a wave cleared with zero leaks pays a +15g flawless bonus on top.
+  Towers sell back at 70% of the gold invested in them.
 - **Controls:** mouse to place / select / upgrade / sell; Space starts a
-  wave; P pauses; F toggles 1x/2x speed; M mutes; Esc cancels.
+  wave; Q fires Beacon Surge; P pauses; F toggles 1x/2x speed; U upgrades
+  the selected tower; S sells it; M mutes; Esc cancels.
 
 ## Layout
 

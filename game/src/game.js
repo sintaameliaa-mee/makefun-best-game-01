@@ -5,10 +5,12 @@ import {
   CELL, GRID_COLS, GRID_ROWS, PLAYFIELD_TOP, PLAYFIELD_BOTTOM,
   START_GOLD, START_LIVES, TOTAL_WAVES, TOWERS, TOWER_ORDER,
   pathCellSet, pathWaypoints, waveClearBonus,
-  KILL_SCORE_MULTIPLIER, VICTORY_LIFE_BONUS,
+  KILL_SCORE_MULTIPLIER, VICTORY_LIFE_BONUS, FLAWLESS_BONUS,
+  ABILITY_DAMAGE, ABILITY_COOLDOWN, ABILITY_SLOW, ABILITY_SLOW_DURATION,
 } from './config.js';
 import { makeRng } from './rng.js';
 import { Tower } from './towers.js';
+import { Enemy } from './enemies.js';
 import { Projectile } from './projectiles.js';
 import { WaveRunner } from './waves.js';
 import { ParticleSystem } from './particles.js';
@@ -46,6 +48,10 @@ export class Game {
     this.leaked = 0;
     this.goldEarned = 0;
     this.beaconFlash = 0;
+    this.abilityFlash = 0;
+    this.abilityCooldown = 0;
+    this.waveLeaks = 0;
+    this.flawlessWaves = 0;
     this.shake = 0;
     this.fx.clear();
   }
@@ -67,6 +73,51 @@ export class Game {
     const queued = this.waveRunner ? this.waveRunner.remaining : 0;
     const alive = this.enemies.filter((e) => !e.dead && !e.escaped).length;
     return queued + alive;
+  }
+
+  // Fraction of the current wave dealt with (0..1), for the HUD progress
+  // bar. Splitter children can push the remainder past the spawned total,
+  // so the value is clamped.
+  get waveProgress() {
+    if (!this.waveRunner || this.waveRunner.total === 0) return 0;
+    return Math.max(0, Math.min(1, 1 - this.enemiesRemaining / this.waveRunner.total));
+  }
+
+  // The colossus furthest along the road, for the boss bar (null if none).
+  get boss() {
+    let best = null;
+    for (const enemy of this.enemies) {
+      if (enemy.dead || enemy.escaped || enemy.type !== 'colossus') continue;
+      if (!best || enemy.distance > best.distance) best = enemy;
+    }
+    return best;
+  }
+
+  get abilityReady() {
+    return this.abilityCooldown <= 0;
+  }
+
+  // Beacon Surge: a wave of light from the beacon damages every enemy on
+  // the field and slows them briefly. Kills pay exactly like tower kills.
+  // Returns false when the ability is cooling down or no enemy is alive.
+  useAbility() {
+    if (this.screen !== 'playing' || this.paused || !this.abilityReady) return false;
+    const targets = this.enemies.filter((e) => !e.dead && !e.escaped);
+    if (targets.length === 0) return false;
+    this.abilityCooldown = ABILITY_COOLDOWN;
+    this.abilityFlash = 0.6;
+    const beacon = this.waypoints[this.waypoints.length - 1];
+    this.fx.ring(beacon.x, beacon.y, '#fef08a', 260);
+    this.fx.ring(beacon.x, beacon.y, '#fbbf24', 160);
+    this.fx.burst(beacon.x, beacon.y, '#fef08a', 24, 220);
+    this.sounds.ability();
+    for (const enemy of targets) {
+      enemy.applySlow(ABILITY_SLOW, ABILITY_SLOW_DURATION, this.now);
+      this.fx.flash(enemy.x, enemy.y, '#fef08a');
+      const gold = enemy.takeDamage(ABILITY_DAMAGE, this.now);
+      if (gold > 0) this.onKill(enemy, gold);
+    }
+    return true;
   }
 
   cellFromPixel(x, y) {
@@ -132,6 +183,7 @@ export class Game {
     if (this.screen !== 'playing' || this.waveActive) return false;
     if (this.wave >= TOTAL_WAVES) return false;
     this.wave += 1;
+    this.waveLeaks = 0;
     this.waveRunner = new WaveRunner(this.wave, this.rng);
     this.waveActive = true;
     this.sounds.waveStart();
@@ -146,11 +198,29 @@ export class Game {
     this.fx.burst(enemy.x, enemy.y, enemy.color, enemy.type === 'colossus' ? 30 : 12, 140);
     this.fx.floater(enemy.x, enemy.y - enemy.radius - 6, `+${gold}g`, '#ffd166');
     this.sounds.coin();
+    if (enemy.splitsInto) {
+      // A splitter bursts into swarmlets that keep marching from where it
+      // died, at the current wave's strength. They are ordinary enemies:
+      // they pay their own reward and must be killed before the wave ends.
+      for (let i = 0; i < enemy.splitsInto.count; i += 1) {
+        const child = new Enemy(enemy.splitsInto.type, this.wave, {
+          spawnAt: {
+            x: enemy.x + (i === 0 ? -8 : 8),
+            y: enemy.y + (i === 0 ? -6 : 6),
+            waypointIndex: enemy.waypointIndex,
+            distance: enemy.distance,
+          },
+        });
+        this.enemies.push(child);
+      }
+      this.fx.ring(enemy.x, enemy.y, enemy.color, 30);
+    }
   }
 
   onEscape(enemy) {
     this.lives -= enemy.lives;
     this.leaked += 1;
+    this.waveLeaks += 1;
     const beacon = this.waypoints[this.waypoints.length - 1];
     this.fx.burst(beacon.x, beacon.y, '#ef4444', 16, 160);
     this.beaconFlash = 0.5;
@@ -164,14 +234,21 @@ export class Game {
   }
 
   clearWave() {
-    const bonus = waveClearBonus(this.wave);
+    const flawless = this.waveLeaks === 0;
+    const bonus = waveClearBonus(this.wave) + (flawless ? FLAWLESS_BONUS : 0);
+    if (flawless) this.flawlessWaves += 1;
     this.gold += bonus;
     this.goldEarned += bonus;
     this.score += bonus * KILL_SCORE_MULTIPLIER;
     this.waveActive = false;
     this.waveRunner = null;
     const beacon = this.waypoints[this.waypoints.length - 1];
-    this.fx.floater(beacon.x - 60, beacon.y - 50, `Wave bonus +${bonus}g`, '#7dd3fc');
+    this.fx.floater(
+      beacon.x - 60,
+      beacon.y - 50,
+      flawless ? `Flawless! Wave bonus +${bonus}g` : `Wave bonus +${bonus}g`,
+      flawless ? '#fbbf24' : '#7dd3fc',
+    );
     if (this.wave >= TOTAL_WAVES) {
       this.score += this.lives * VICTORY_LIFE_BONUS;
       this.screen = 'victory';
@@ -184,6 +261,8 @@ export class Game {
     const dt = rawDt * this.speed;
     this.now += dt;
     if (this.beaconFlash > 0) this.beaconFlash -= rawDt;
+    if (this.abilityFlash > 0) this.abilityFlash -= rawDt;
+    if (this.abilityCooldown > 0) this.abilityCooldown -= rawDt;
     if (this.shake > 0) this.shake -= rawDt;
 
     if (this.waveRunner) {
@@ -193,6 +272,7 @@ export class Game {
     for (const tower of this.towers) {
       tower.update(dt, this.enemies, (from, target) => {
         this.projectiles.push(new Projectile(from, target));
+        this.fx.flash(from.x, from.y, from.def.color);
         this.sounds.shoot(from.type);
       });
     }
@@ -210,6 +290,18 @@ export class Game {
       if (enemy.escaped) this.onEscape(enemy);
     }
     this.enemies = this.enemies.filter((e) => !e.dead && !e.escaped);
+
+    // Menders restore nearby allies (never themselves, never past full).
+    for (const mender of this.enemies) {
+      if (!mender.isMender || mender.dead || mender.escaped) continue;
+      for (const ally of this.enemies) {
+        if (ally === mender || ally.dead || ally.escaped) continue;
+        const dx = ally.x - mender.x;
+        const dy = ally.y - mender.y;
+        if (dx * dx + dy * dy > mender.healRadius * mender.healRadius) continue;
+        ally.heal(mender.healRate * dt);
+      }
+    }
 
     if (this.waveActive && this.waveRunner && this.waveRunner.doneSpawning && this.enemies.length === 0) {
       this.clearWave();

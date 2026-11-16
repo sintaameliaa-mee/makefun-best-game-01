@@ -59,6 +59,10 @@ export function attachInput(canvas, game) {
       game.startWave();
       return;
     }
+    if (pointIn(layout.ability, at.x, at.y)) {
+      if (!game.useAbility()) game.sounds.denied();
+      return;
+    }
     if (pointIn(layout.speed, at.x, at.y)) {
       game.speed = game.speed === 1 ? 2 : 1;
       return;
@@ -140,6 +144,8 @@ export function attachInput(canvas, game) {
     } else if (key === ' ') {
       event.preventDefault();
       game.startWave();
+    } else if (key === 'q') {
+      if (!game.useAbility()) game.sounds.denied();
     } else if (key === 'p') {
       game.paused = !game.paused;
     } else if (key === 'f') {

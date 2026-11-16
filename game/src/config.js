@@ -18,6 +18,20 @@ export const SELL_REFUND = 0.7;
 export const KILL_SCORE_MULTIPLIER = 10;
 export const VICTORY_LIFE_BONUS = 100;
 
+// Flawless-wave bonus: clearing a wave with zero leaks pays this much extra
+// gold on top of the wave-clear bonus. The rule is exact and shown in the
+// HUD floater when it triggers.
+export const FLAWLESS_BONUS = 15;
+
+// Beacon Surge: the player's active ability. A wave of light from the
+// beacon damages every enemy on the field and slows them briefly. Free to
+// use, gated only by its cooldown.
+export const ABILITY_NAME = 'Beacon Surge';
+export const ABILITY_DAMAGE = 45;
+export const ABILITY_COOLDOWN = 30;
+export const ABILITY_SLOW = 0.5;
+export const ABILITY_SLOW_DURATION = 1.5;
+
 // The road the horde marches along, as grid cells (column, row) from the
 // west gate to the beacon at the east edge. Row 0 is the first row under
 // the HUD; the pixel centre of a cell is (c * CELL + CELL / 2,
@@ -57,8 +71,8 @@ export function pathCellSet() {
   return cells;
 }
 
-// Towers: four roles, three levels each. Damage, range and fire rate are
-// per level; upgradeCost is what level 2 / level 3 cost on top of the base.
+// Towers: four roles, four levels each. Damage, range and fire rate are
+// per level; upgradeCost is what levels 2 / 3 / 4 cost on top of the base.
 export const TOWERS = {
   spark: {
     key: 'spark',
@@ -67,11 +81,11 @@ export const TOWERS = {
     cost: 50,
     color: '#ffd166',
     core: '#fff3b0',
-    damage: [6, 10, 16],
-    range: [112, 124, 138],
-    fireRate: [3.0, 3.6, 4.4],
+    damage: [6, 10, 16, 24],
+    range: [112, 124, 138, 152],
+    fireRate: [3.0, 3.6, 4.4, 5.2],
     projectileSpeed: 520,
-    upgradeCost: [40, 60],
+    upgradeCost: [40, 60, 90],
   },
   frost: {
     key: 'frost',
@@ -80,13 +94,13 @@ export const TOWERS = {
     cost: 90,
     color: '#7dd3fc',
     core: '#e0f2fe',
-    damage: [3, 5, 8],
-    range: [104, 116, 130],
-    fireRate: [1.2, 1.4, 1.7],
+    damage: [3, 5, 8, 12],
+    range: [104, 116, 130, 144],
+    fireRate: [1.2, 1.4, 1.7, 2.0],
     projectileSpeed: 380,
-    slowFactor: [0.35, 0.45, 0.55],
+    slowFactor: [0.35, 0.45, 0.55, 0.65],
     slowDuration: 1.6,
-    upgradeCost: [70, 110],
+    upgradeCost: [70, 110, 160],
   },
   cannon: {
     key: 'cannon',
@@ -95,11 +109,11 @@ export const TOWERS = {
     cost: 120,
     color: '#fb923c',
     core: '#ffedd5',
-    damage: [26, 42, 65],
-    range: [142, 154, 168],
-    fireRate: [0.55, 0.62, 0.72],
+    damage: [26, 42, 65, 95],
+    range: [142, 154, 168, 182],
+    fireRate: [0.55, 0.62, 0.72, 0.82],
     projectileSpeed: 460,
-    upgradeCost: [95, 145],
+    upgradeCost: [95, 145, 210],
   },
   nova: {
     key: 'nova',
@@ -108,12 +122,12 @@ export const TOWERS = {
     cost: 150,
     color: '#c084fc',
     core: '#f3e8ff',
-    damage: [12, 19, 30],
-    range: [162, 176, 192],
-    fireRate: [0.5, 0.55, 0.62],
+    damage: [12, 19, 30, 44],
+    range: [162, 176, 192, 208],
+    fireRate: [0.5, 0.55, 0.62, 0.7],
     projectileSpeed: 340,
-    splashRadius: [56, 66, 80],
-    upgradeCost: [120, 180],
+    splashRadius: [56, 66, 80, 95],
+    upgradeCost: [120, 180, 260],
   },
 };
 
@@ -188,7 +202,39 @@ export const ENEMIES = {
     color: '#ef4444',
     dark: '#450a0a',
   },
+  splitter: {
+    key: 'splitter',
+    name: 'Splitter',
+    hp: 40,
+    speed: 64,
+    reward: 12,
+    lives: 1,
+    radius: 13,
+    color: '#84cc16',
+    dark: '#365314',
+    // On death it bursts into this many swarmlets at its position.
+    splitsInto: { type: 'swarmlet', count: 2 },
+  },
+  mender: {
+    key: 'mender',
+    name: 'Mender',
+    hp: 45,
+    speed: 60,
+    reward: 16,
+    lives: 1,
+    radius: 12,
+    color: '#2dd4bf',
+    dark: '#134e4a',
+    // Restores this many hit points per second to other enemies in range.
+    healRadius: 80,
+    healRate: 6,
+  },
 };
+
+// Elite variants: tougher, richer, worth the focus fire. A wave group with
+// elite: true spawns its enemies with these multipliers.
+export const ELITE_HP_MULTIPLIER = 1.8;
+export const ELITE_REWARD_MULTIPLIER = 2;
 
 export function enemyHpFor(type, wave) {
   const base = ENEMIES[type].hp;
@@ -215,10 +261,12 @@ export const WAVES = [
   [
     { type: 'bulwark', count: 6, gap: 1.4 },
     { type: 'drifter', count: 10, gap: 0.6 },
+    { type: 'splitter', count: 4, gap: 0.8 },
   ],
   [
     { type: 'colossus', count: 1, gap: 1 },
     { type: 'swarmlet', count: 8, gap: 0.4 },
+    { type: 'splitter', count: 4, gap: 0.7 },
   ],
   [
     { type: 'wraith', count: 12, gap: 0.7 },
@@ -227,29 +275,40 @@ export const WAVES = [
   [
     { type: 'bulwark', count: 10, gap: 1.1 },
     { type: 'swarmlet', count: 12, gap: 0.3 },
+    { type: 'mender', count: 3, gap: 2.2 },
   ],
   [
     { type: 'swift', count: 16, gap: 0.45 },
     { type: 'wraith', count: 6, gap: 0.8 },
     { type: 'bulwark', count: 4, gap: 1.2 },
+    { type: 'splitter', count: 6, gap: 0.6 },
+    { type: 'mender', count: 3, gap: 2.0 },
   ],
   [
     { type: 'swarmlet', count: 20, gap: 0.28 },
     { type: 'drifter', count: 10, gap: 0.5 },
     { type: 'wraith', count: 6, gap: 0.7 },
+    { type: 'splitter', count: 6, gap: 0.6 },
   ],
   [
     { type: 'colossus', count: 2, gap: 6 },
     { type: 'swift', count: 10, gap: 0.5 },
+    { type: 'bulwark', count: 4, gap: 1.2, elite: true },
+    { type: 'mender', count: 4, gap: 2.0 },
   ],
   [
     { type: 'bulwark', count: 8, gap: 1.0 },
-    { type: 'wraith', count: 12, gap: 0.6 },
+    { type: 'wraith', count: 6, gap: 0.6 },
+    { type: 'wraith', count: 6, gap: 0.6, elite: true },
     { type: 'swift', count: 10, gap: 0.45 },
+    { type: 'mender', count: 5, gap: 1.8 },
+    { type: 'splitter', count: 8, gap: 0.5 },
   ],
   [
     { type: 'colossus', count: 3, gap: 5 },
     { type: 'wraith', count: 8, gap: 0.7 },
-    { type: 'bulwark', count: 6, gap: 1.0 },
+    { type: 'bulwark', count: 6, gap: 1.0, elite: true },
+    { type: 'mender', count: 6, gap: 1.8 },
+    { type: 'splitter', count: 8, gap: 0.5 },
   ],
 ];

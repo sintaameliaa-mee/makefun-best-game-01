@@ -32,7 +32,7 @@ export class Projectile {
     const dist = Math.hypot(dx, dy);
     const step = this.speed * dt;
     this.trail.push({ x: this.x, y: this.y });
-    if (this.trail.length > 6) this.trail.shift();
+    if (this.trail.length > 8) this.trail.shift();
     if (dist <= Math.max(step, 10)) {
       this.x = tx;
       this.y = ty;
@@ -53,6 +53,7 @@ export class Projectile {
         const dx = enemy.x - this.x;
         const dy = enemy.y - this.y;
         if (dx * dx + dy * dy > this.splashRadius * this.splashRadius) continue;
+        fx.damage(enemy.x, enemy.y - enemy.radius - 4, this.damage, this.color);
         const gold = enemy.takeDamage(this.damage, now);
         if (gold > 0) onKill(enemy, gold);
       }
@@ -60,8 +61,13 @@ export class Projectile {
     }
     const target = this.target;
     if (!target || target.dead || target.escaped) return;
-    fx.burst(this.x, this.y, this.color, 4, 70);
-    if (this.slowFactor > 0) target.applySlow(this.slowFactor, this.slowDuration, now);
+    if (this.slowFactor > 0) {
+      fx.shards(this.x, this.y, '#bae6fd', 5, 90);
+      target.applySlow(this.slowFactor, this.slowDuration, now);
+    } else {
+      fx.burst(this.x, this.y, this.color, 4, 70);
+    }
+    fx.damage(target.x, target.y - target.radius - 4, this.damage, this.color);
     const gold = target.takeDamage(this.damage, now);
     if (gold > 0) onKill(target, gold);
   }

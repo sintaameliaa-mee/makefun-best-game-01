@@ -72,7 +72,7 @@ export class SoundBank {
   coin() {
     this.tone(988, 0.07, 'sine', 0.16);
     if (!this.context) return;
-    window.setTimeout(() => this.tone(1319, 0.09, 'sine', 0.16), 60);
+    setTimeout(() => this.tone(1319, 0.09, 'sine', 0.16), 60);
   }
 
   place() {
@@ -85,7 +85,12 @@ export class SoundBank {
 
   waveStart() {
     this.tone(392, 0.12, 'triangle', 0.22);
-    window.setTimeout(() => this.tone(523, 0.14, 'triangle', 0.22), 110);
+    setTimeout(() => this.tone(523, 0.14, 'triangle', 0.22), 110);
+  }
+
+  ability() {
+    this.tone(523, 0.25, 'sine', 0.28, 1047);
+    setTimeout(() => this.tone(784, 0.3, 'triangle', 0.24, 1568), 90);
   }
 
   leak() {
@@ -94,13 +99,13 @@ export class SoundBank {
 
   victory() {
     [523, 659, 784, 1047].forEach((frequency, index) => {
-      window.setTimeout(() => this.tone(frequency, 0.22, 'triangle', 0.24), index * 140);
+      setTimeout(() => this.tone(frequency, 0.22, 'triangle', 0.24), index * 140);
     });
   }
 
   defeat() {
     [392, 330, 262, 196].forEach((frequency, index) => {
-      window.setTimeout(() => this.tone(frequency, 0.26, 'triangle', 0.22), index * 170);
+      setTimeout(() => this.tone(frequency, 0.26, 'triangle', 0.22), index * 170);
     });
   }
 }

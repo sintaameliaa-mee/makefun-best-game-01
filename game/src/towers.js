@@ -58,7 +58,7 @@ export class Tower {
   }
 
   get maxed() {
-    return this.level >= 3;
+    return this.level >= 4;
   }
 
   get upgradeCost() {

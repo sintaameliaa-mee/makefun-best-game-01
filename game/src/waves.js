@@ -12,7 +12,7 @@ export class WaveRunner {
     let at = 0.6;
     for (const group of WAVES[waveNumber - 1]) {
       for (let i = 0; i < group.count; i += 1) {
-        this.queue.push({ type: group.type, at: at + i * group.gap });
+        this.queue.push({ type: group.type, at: at + i * group.gap, elite: Boolean(group.elite) });
         at += rng.range(0, 0.12);
       }
       at += 0.9;
@@ -33,7 +33,7 @@ export class WaveRunner {
     this.timer += dt;
     while (this.spawned < this.total && this.queue[this.spawned].at <= this.timer) {
       const next = this.queue[this.spawned];
-      spawnEnemy(new Enemy(next.type, this.waveNumber));
+      spawnEnemy(new Enemy(next.type, this.waveNumber, { elite: next.elite }));
       this.spawned += 1;
     }
   }
